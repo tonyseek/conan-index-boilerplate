@@ -2,3 +2,6 @@ sources:
   "20211201.1":
     url: "https://github.com/tonyseek/cpp-boilerplate/archive/1db457ba527c90874bb105074caa81f6835ef58e.tar.gz"
     sha256: "a2b5da042184c1a8648deccf2ea4688444d3ece654cf23dfd546b8bcf6d4ac46"
+  "20211202.1":
+    url: "https://github.com/tonyseek/cpp-boilerplate/archive/1db457ba527c90874bb105074caa81f6835ef58e.tar.gz"
+    sha256: "a2b5da042184c1a8648deccf2ea4688444d3ece654cf23dfd546b8bcf6d4ac46"

@@ -1,0 +1,54 @@
+DEFAULT_CONAN_REMOTE = local
+DEFAULT_CONAN_USER_HOME = $(PWD)
+CONAN_REMOTE = $(DEFAULT_CONAN_REMOTE)
+
+export CONAN_USER_HOME = $(DEFAULT_CONAN_USER_HOME)
+export CONAN_REVISIONS_ENABLED = 1
+
+.PHONY: help uploadall exportall listall local-server clean cleanall
+
+help:
+	@printf 'Commands:\n'
+	@printf '  uploadall      Upload all recipes to remote.\n'
+	@printf '  exportall      Export all recipes to local.\n'
+	@printf '  listall        List all recipes in local and remote.\n'
+ifeq ($(CONAN_REMOTE),local)
+	@printf '  local-server   Run local server for development purpose.\n'
+endif
+	@printf '  clean          Remove local and remote.\n'
+	@printf '  cleanall       Remove everything even this Makefile.\n'
+	@printf '\nArguments:\n'
+	@printf '  CONAN_USER_HOME  (Default: $(DEFAULT_CONAN_USER_HOME))\n'
+	@printf '                   (Current: $(CONAN_USER_HOME))\n'
+	@printf '  CONAN_REMOTE     (Default: $(DEFAULT_CONAN_REMOTE))\n'
+	@printf '                   (Default: $(CONAN_REMOTE))\n'
+	@printf '\nExamples:\n'
+	@printf '  make CONAN_REMOTE=mine uploadall:\n'
+
+uploadall: exportall
+ifeq ($(CONAN_REMOTE),local)
+	conan remote add -f "$(CONAN_REMOTE)" http://localhost:9300
+	conan user -r "$(CONAN_REMOTE)" demo
+	conan user -r "$(CONAN_REMOTE)" --password demo demo
+endif
+	conan upload "*" --confirm --parallel -r "$(CONAN_REMOTE)"
+
+exportall:
+	conan export "@REV_PATH@" "@REV_REFERENCE@"
+
+listall:
+	conan search --rev "@REV_REFERENCE@"
+ifeq ($(CONAN_REMOTE),local)
+	conan search --rev "@REV_REFERENCE@" -r "$(CONAN_REMOTE)"
+endif
+
+ifeq ($(CONAN_REMOTE),local)
+local-server:
+	conan_server -d ./conan_server
+endif
+
+clean:
+	rm -rf ./.conan ./conan_server
+
+cleanall: clean
+	rm -rf ./Makefile

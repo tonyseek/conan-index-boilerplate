@@ -5,7 +5,6 @@ from conans import ConanFile, CMake, tools
 
 class ConanRecipe(ConanFile):
     name = "demo"
-    version = "20211201.1"
     homepage = "https://github.com/tonyseek/cpp-boilerplate"
     url = "https://github.com/tonyseek/cpp-boilerplate"
     exports_sources = ["CMakeLists.txt"]

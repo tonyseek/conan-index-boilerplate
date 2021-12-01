@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+
+import argparse
+import collections
+import os
+import sys
+
+from ruamel.yaml import YAML
+
+
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+
+class Revision(collections.namedtuple('Rev', ['name', 'version', 'path'])):
+    def reference(self, channel=''):
+        reference = f'{self.name}/{self.version}'
+        if channel:
+            return f'{reference}@{channel}'
+        return reference
+
+
+class Revisions(list):
+    yaml = YAML(typ='safe')
+
+    def _render_makefile(self, template, channel):
+        for line in template.split(os.linesep):
+            if line.startswith('\t') and '@REV_' in line:
+                for rev in self:
+                    yield line \
+                        .replace('@REV_NAME@', rev.name) \
+                        .replace('@REV_VERSION@', rev.version) \
+                        .replace('@REV_PATH@', rev.path) \
+                        .replace('@REV_REFERENCE@', rev.reference(channel))
+            else:
+                yield line
+
+    def render_makefile(self, template, channel=''):
+        return os.linesep.join(self._render_makefile(template, channel))
+
+    @classmethod
+    def iter_revisions(cls, directory):
+        for entry in os.scandir(directory):
+            if not entry.is_dir():
+                continue
+            try:
+                with open(os.path.join(entry.path, 'config.yml')) as cfg_file:
+                    cfg = cls.yaml.load(cfg_file)
+                for version, info in cfg.get('versions', {}).items():
+                    folder = info.get('folder')
+                    if not folder:
+                        continue
+                    path = os.path.join(entry.path, folder)
+                    yield Revision(entry.name, version, path)
+            except FileNotFoundError:
+                continue
+
+    @classmethod
+    def find_revisions(cls, directory):
+        revisions = cls(cls.iter_revisions(directory))
+        revisions.sort()
+        return revisions
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-r', '--recipes',
+        default=os.path.join(ROOT_DIR, 'recipes'),
+        help='Path to the directory of recipes')
+    parser.add_argument(
+        '-s', '--src',
+        default=os.path.join(ROOT_DIR, 'Makefile.in'),
+        help='Path to the template for generating Makefile')
+    parser.add_argument(
+        '-d', '--dst',
+        default=os.path.join(ROOT_DIR, 'Makefile'),
+        help='Path to the generated Makefile')
+    parser.add_argument(
+        '-c', '--channel', default='',
+        help='Channel for exporting packages')
+    args = parser.parse_args()
+    if args.dst == args.src:
+        raise argparse.ArgumentError('--src must be different with --dst')
+    return args
+
+
+def main():
+    args = parse_args()
+    revisions = Revisions.find_revisions(args.recipes)
+    for rev in revisions:
+        ref = rev.reference(args.channel)
+        print(f'{ref}')
+        print(f'  {rev.path}', file=sys.stderr)
+    print(f'\n{args.src}\n{args.dst}', file=sys.stderr)
+    with open(args.src, 'r') as src_file, open(args.dst, 'w') as dst_file:
+        src_text = src_file.read()
+        dst_text = revisions.render_makefile(src_text, args.channel)
+        dst_file.write(dst_text)
+
+
+if __name__ == '__main__':
+    main()
