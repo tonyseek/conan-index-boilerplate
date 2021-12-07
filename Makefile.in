@@ -31,10 +31,14 @@ ifeq ($(CONAN_REMOTE),local)
 	conan user -r "$(CONAN_REMOTE)" demo
 	conan user -r "$(CONAN_REMOTE)" --password demo demo
 endif
-	conan upload "*" --confirm --parallel -r "$(CONAN_REMOTE)"
+	conan upload "@REV_REFERENCE@" --confirm --parallel -r "$(CONAN_REMOTE)"
+	conan search "@REV_REFERENCE@" --raw | awk '$$1=="Package_ID:"{print "@REV_REFERENCE@:"$$2}' | xargs -rn1 conan upload --confirm --parallel -r "$(CONAN_REMOTE)"
 
 exportall:
 	conan export "@REV_PATH@" "@REV_REFERENCE@"
+
+buildall:
+	conan install --build="@REV_NAME@" "@REV_REFERENCE@"
 
 listall:
 	conan search --rev "@REV_REFERENCE@"
